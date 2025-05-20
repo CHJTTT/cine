@@ -1,6 +1,4 @@
-<?php
-// includes/footer.php
-?>
+<?php // NO ABRAS HTML NI BODY AQUÍ ?>
 <footer class="bg-black py-8 mt-12">
   <div class="container mx-auto px-4 text-gray-400 text-center">
     <p>© <?php echo date('Y'); ?> CINESTAR. Todos los derechos reservados.</p>

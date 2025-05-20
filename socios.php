@@ -1,16 +1,15 @@
 <?php
-require 'includes/connection.php';
+require 'connection.php'; // Conexión a la base de datos
+include 'header_comun.php'; // Incluye el header común
 ?>
-<?php include 'includes/header.php'; ?>
+
 <main class="container mx-auto px-4 py-8">
   <h2 class="text-2xl font-bold mb-4 text-red-400">Gestión de Socios</h2>
 
   <!-- Formulario de registro -->
   <div class="bg-gray-800 p-6 rounded-lg shadow-md mb-8">
     <h3 class="text-xl font-semibold mb-4">Registrar Nuevo Socio</h3>
-    <?php if(
-      isset($_GET['success']) && $_GET['success']=='1'
-    ): ?>
+    <?php if(isset($_GET['success']) && $_GET['success']=='1'): ?>
       <div class="bg-green-600 text-white p-2 rounded mb-4">Socio registrado correctamente.</div>
     <?php endif; ?>
     <form action="socios.php" method="POST" class="space-y-4">
@@ -44,21 +43,24 @@ require 'includes/connection.php';
 
   <?php
   // Procesar formulario
-  if($_SERVER['REQUEST_METHOD']==='POST' && $_POST['action']==='register'){
-    $dni = trim($_POST['dni']);
-    $nombres = trim($_POST['nombres']);
-    $correo = trim($_POST['correo']);
-    $edad = (int)$_POST['edad'];
-    $genero = $_POST['genero'];
+  if(isset($_POST['action']) && $_POST['action']==='register'){
+    if (isset($pdo)) { // $pdo viene de connection.php
+        $dni = trim($_POST['dni']);
+        $nombres = trim($_POST['nombres']);
+        $correo = trim($_POST['correo']);
+        $edad = (int)$_POST['edad'];
+        $genero = $_POST['genero'];
 
-    // Inserción segura
-    $stmt = $pdo->prepare("INSERT INTO socios (dni, nombres, correo, edad, genero) VALUES (?,?,?,?,?)");
-    try {
-      $stmt->execute([$dni, $nombres, $correo, $edad, $genero]);
-      header('Location: socios.php?success=1');
-      exit;
-    } catch(PDOException $e) {
-      echo '<div class="bg-red-600 text-white p-2 rounded mb-4">Error: '.htmlspecialchars($e->getMessage()).'</div>';
+        $stmt = $pdo->prepare("INSERT INTO socios (dni, nombres, correo, edad, genero) VALUES (?,?,?,?,?)");
+        try {
+          $stmt->execute([$dni, $nombres, $correo, $edad, $genero]);
+          header('Location: socios.php?success=1');
+          exit;
+        } catch(PDOException $e) {
+          echo '<div class="bg-red-600 text-white p-2 rounded mb-4">Error al registrar socio: '.htmlspecialchars($e->getMessage()).'</div>';
+        }
+    } else {
+        echo '<div class="bg-red-600 text-white p-2 rounded mb-4">Error: No se pudo establecer la conexión a la base de datos.</div>';
     }
   }
   ?>
@@ -79,25 +81,34 @@ require 'includes/connection.php';
       </thead>
       <tbody>
         <?php
-        $stmt = $pdo->query("SELECT * FROM socios ORDER BY creado_en DESC");
-        while($row = $stmt->fetch()): ?>
-        <tr class="border-b border-gray-600">
-          <td class="py-2 px-4"><?= htmlspecialchars($row['dni']) ?></td>
-          <td class="py-2 px-4"><?= htmlspecialchars($row['nombres']) ?></td>
-          <td class="py-2 px-4"><?= htmlspecialchars($row['correo']) ?></td>
-          <td class="py-2 px-4"><?= htmlspecialchars($row['edad']) ?></td>
-          <td class="py-2 px-4"><?= htmlspecialchars($row['genero']) ?></td>
-          <td class="py-2 px-4">
-            <form action="delete_socios.php" method="POST" onsubmit="return confirm('¿Eliminar socio?');">
-              <input type="hidden" name="dni" value="<?= htmlspecialchars($row['dni']) ?>" />
-              <button type="submit" class="bg-red-600 py-1 px-3 rounded hover:bg-red-700">Eliminar</button>
-            </form>
-          </td>
-        </tr>
-        <?php endwhile; ?>
+        if (isset($pdo)) { // $pdo viene de connection.php
+            // Asumiendo que tu tabla socios tiene estas columnas
+            $stmt = $pdo->query("SELECT dni, nombres, correo, edad, genero FROM socios ORDER BY creado_en DESC");
+            while($row = $stmt->fetch()): ?>
+            <tr class="border-b border-gray-600">
+              <td class="py-2 px-4"><?= htmlspecialchars($row['dni']) ?></td>
+              <td class="py-2 px-4"><?= htmlspecialchars($row['nombres']) ?></td>
+              <td class="py-2 px-4"><?= htmlspecialchars($row['correo']) ?></td>
+              <td class="py-2 px-4"><?= htmlspecialchars($row['edad']) ?></td>
+              <td class="py-2 px-4"><?= htmlspecialchars($row['genero']) ?></td>
+              <td class="py-2 px-4">
+                <form action="delete_socios.php" method="POST" onsubmit="return confirm('¿Está seguro de que desea eliminar este socio?');">
+                  <input type="hidden" name="dni" value="<?= htmlspecialchars($row['dni']) ?>" />
+                  <button type="submit" class="bg-red-600 py-1 px-3 rounded hover:bg-red-700">Eliminar</button>
+                </form>
+              </td>
+            </tr>
+            <?php endwhile;
+        } else {
+            echo '<tr><td colspan="6" class="text-center py-4">No se pudo conectar a la base de datos para listar socios.</td></tr>';
+        }
+        ?>
       </tbody>
     </table>
   </div>
 
 </main>
-<?php include 'includes/footer.php'; ?>
+
+<?php
+include 'piedepaginacomun.php'; // Incluye el footer común
+?>

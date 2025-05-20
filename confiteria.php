@@ -1,96 +1,130 @@
 <?php
-require 'includes/connection.php';
+// connection.php no parece ser necesario para la lógica actual de este archivo,
+// ya que los combos están hardcodeados y el carrito es solo JS.
+// Si en el futuro los combos vienen de la BD, entonces sí necesitarías:
+// require 'connection.php';
+include 'header_comun.php'; // CORREGIDO - Asume que has creado cine_star/header_comun.php
 ?>
-<?php include 'includes/header.php'; ?>
 <main class="container mx-auto px-4 py-8">
   <h2 class="text-2xl font-bold mb-4 text-red-400">Confitería</h2>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     <?php
+    // Estos combos podrían venir de la tabla confiteria_productos si la implementas
     $combos = [
-      ['id'=>1,'titulo'=>'Combo Clásico','desc'=>'Palomitas grandes + 2 bebidas','precio'=>25.00,'img'=>'/assets/images/combo1.jpg'],
-      ['id'=>2,'titulo'=>'Combo Dulce','desc'=>'Palomitas acarameladas + 2 bebidas','precio'=>27.00,'img'=>'/assets/images/combo2.jpg'],
-      ['id'=>3,'titulo'=>'Combo Nachos','desc'=>'Nachos con queso + 2 bebidas','precio'=>30.00,'img'=>'/assets/images/combo3.jpg'],
+      ['id'=>1,'titulo'=>'Combo Clásico','desc'=>'Palomitas grandes + 2 bebidas','precio'=>25.00,'img'=>'assets/images/combo1.jpg'], // CORREGIDA RUTA IMAGEN
+      ['id'=>2,'titulo'=>'Combo Dulce','desc'=>'Palomitas acarameladas + 2 bebidas','precio'=>27.00,'img'=>'assets/images/combo2.jpg'], // CORREGIDA RUTA IMAGEN
+      ['id'=>3,'titulo'=>'Combo Nachos','desc'=>'Nachos con queso + 2 bebidas','precio'=>30.00,'img'=>'assets/images/combo3.jpg'], // CORREGIDA RUTA IMAGEN
     ];
     foreach($combos as $combo): ?>
     <div class="bg-gray-800 p-6 rounded-lg shadow-md flex flex-col">
-      <img src="<?= $combo['img'] ?>" alt="<?= $combo['titulo'] ?>" class="rounded mb-4 h-48 object-cover">
-      <h3 class="text-xl font-semibold mb-2"><?= $combo['titulo'] ?></h3>
-      <p class="text-gray-300 mb-4"><?= $combo['desc'] ?></p>
+      <img src="<?= htmlspecialchars($combo['img']) ?>" alt="<?= htmlspecialchars($combo['titulo']) ?>" class="rounded mb-4 h-48 object-cover">
+      <h3 class="text-xl font-semibold mb-2"><?= htmlspecialchars($combo['titulo']) ?></h3>
+      <p class="text-gray-300 mb-4"><?= htmlspecialchars($combo['desc']) ?></p>
       <p class="text-red-500 font-bold text-lg mb-4">S/ <?= number_format($combo['precio'],2) ?></p>
-      <button onclick="addCart(<?= $combo['id'] ?>)" class="mt-auto bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700">Agregar al Carrito</button>
+      <button onclick="addCart(<?= htmlspecialchars(json_encode($combo)) ?>)" class="mt-auto bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700">Agregar al Carrito</button>
     </div>
     <?php endforeach; ?>
   </div>
 
   <!-- Carrito modal -->
-  <div id="cartModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-    <div class="bg-gray-800 p-6 rounded-lg shadow-md w-96">
-      <h3 class="text-xl font-semibold text-red-400 mb-4">Tu Carrito</h3>
-      <ul id="cartList" class="space-y-2 text-gray-300"></ul>
-      <p class="mt-4 font-semibold text-gray-200">Total: S/ <span id="cartTotal">0.00</span></p>
-      <div class="mt-6 flex justify-end space-x-4">
-        <button onclick="clearCart()" class="bg-gray-600 py-1 px-3 rounded hover:bg-gray-500">Vaciar</button>
-        <button onclick="checkout()" class="bg-red-600 py-1 px-3 rounded hover:bg-red-700">Pagar</button>
+  <div id="cartModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-30"> <!-- Aumentado z-index -->
+    <div class="bg-gray-800 p-6 rounded-lg shadow-md w-full max-w-md mx-4"> <!-- Ajustado ancho y margen -->
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-semibold text-red-400">Tu Carrito</h3>
+        <button onclick="toggleCart()" class="text-gray-400 hover:text-white text-2xl leading-none">×</button> <!-- Botón de cierre mejorado -->
       </div>
-      <button onclick="toggleCart()" class="absolute top-2 right-2 text-gray-400 hover:text-white">✕</button>
+      <ul id="cartList" class="space-y-2 text-gray-300 max-h-60 overflow-y-auto mb-4"></ul> <!-- Scroll para lista larga -->
+      <p class="mt-4 font-semibold text-gray-200">Total: S/ <span id="cartTotal">0.00</span></p>
+      <div class="mt-6 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
+        <button onclick="clearCart()" class="w-full sm:w-auto bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-500">Vaciar Carrito</button>
+        <button onclick="checkout()" class="w-full sm:w-auto bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700">Pagar</button>
+      </div>
     </div>
   </div>
 </main>
-<?php include 'includes/footer.php'; ?>
+<?php include 'piedepaginacomun.php'; // CORREGIDO - Asume que has creado cine_star/piedepaginacomun.php ?>
+
 <script>
   let cart = [];
-  function addCart(id){
-    const combo = {1:['Combo Clásico',25.00],2:['Combo Dulce',27.00],3:['Combo Nachos',30.00]}[id];
-    cart.push({titulo:combo[0],precio:combo[1]}); updateCart();
-    toggleCart();
+  const combosData = <?= json_encode(array_column($combos, null, 'id')) ?>; // Pasar datos de combos a JS
+
+  function addCart(comboObject){ // Recibir el objeto combo completo
+    // Si deseas permitir múltiples unidades del mismo combo, necesitarías una lógica más compleja aquí
+    // Por ahora, simplemente añade el combo si no está o podrías aumentar cantidad
+    cart.push({id: comboObject.id, titulo: comboObject.titulo, precio: comboObject.precio});
+    updateCartUI();
+    toggleCart(true); // Abrir carrito
   }
-  function updateCart(){
-    const list = document.getElementById('cartList'); list.innerHTML=''; let total=0;
-    cart.forEach((item,i)=>{ total+=item.precio; list.innerHTML+=`<li>${item.titulo} - S/ ${item.precio.toFixed(2)}</li>`; });
-    document.getElementById('cartTotal').textContent=total.toFixed(2);
+
+  function updateCartUI(){
+    const cartListEl = document.getElementById('cartList');
+    const cartTotalEl = document.getElementById('cartTotal');
+    if (!cartListEl || !cartTotalEl) return;
+
+    cartListEl.innerHTML = ''; // Limpiar lista
+    let currentTotal = 0;
+
+    cart.forEach((item, index) => {
+      currentTotal += item.precio;
+      const listItem = document.createElement('li');
+      listItem.className = 'flex justify-between items-center';
+      listItem.innerHTML = `
+        <span>${htmlspecialchars(item.titulo)} - S/ ${item.precio.toFixed(2)}</span>
+        <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-600 text-xs">Quitar</button>
+      `;
+      cartListEl.appendChild(listItem);
+    });
+    cartTotalEl.textContent = currentTotal.toFixed(2);
   }
-  function toggleCart(){ document.getElementById('cartModal').classList.toggle('hidden'); }
-  function clearCart(){ cart=[]; updateCart(); }
-  function checkout(){ alert('Compra de confitería procesada. ¡Disfruta!'); clearCart(); toggleCart(); }
+
+  function removeFromCart(index) {
+    cart.splice(index, 1); // Remover item por índice
+    updateCartUI();
+  }
+
+  function toggleCart(forceOpen = null) {
+    const cartModalEl = document.getElementById('cartModal');
+    if (!cartModalEl) return;
+    if (forceOpen === true) {
+        cartModalEl.classList.remove('hidden');
+        cartModalEl.classList.add('flex'); // Usar flex para centrar
+    } else if (forceOpen === false) {
+        cartModalEl.classList.add('hidden');
+        cartModalEl.classList.remove('flex');
+    } else {
+        cartModalEl.classList.toggle('hidden');
+        cartModalEl.classList.toggle('flex');
+    }
+  }
+
+  function clearCart(){
+    cart = [];
+    updateCartUI();
+    // toggleCart(false); // Opcionalmente cerrar carrito al vaciar
+  }
+
+  function checkout(){
+    if (cart.length === 0) {
+        alert('Tu carrito está vacío.');
+        return;
+    }
+    alert('Compra de confitería procesada por un total de S/ ' + document.getElementById('cartTotal').textContent + '. ¡Disfruta!');
+    clearCart();
+    toggleCart(false); // Cerrar carrito después de "pagar"
+  }
+
+  // Función simple para escapar HTML en JS (si no usas una librería)
+  function htmlspecialchars(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(/[&<>"']/g, function (match) {
+      const_escape = {
+        '&': '&',
+        '<': '<',
+        '>': '>',
+        '"': '"',
+        "'": '''
+      };
+      return const_escape[match];
+    });
+  }
 </script>
-
----
-
-## 10. **search.php** — Buscador de películas y actores
-
-```php
-<?php
-require 'includes/connection.php';
-?>
-<?php include 'includes/header.php'; ?>
-<main class="container mx-auto px-4 py-8">
-  <h2 class="text-2xl font-bold mb-4 text-red-400">Buscador</h2>
-  <form method="GET" action="search.php" class="mb-6">
-    <div class="flex space-x-2">
-      <input type="text" name="q" placeholder="Ingrese nombre de película o actor" class="w-full p-2 rounded bg-gray-700 text-white" required>
-      <button type="submit" class="bg-red-600 py-2 px-4 rounded hover:bg-red-700">Buscar</button>
-    </div>
-  </form>
-  <?php if(isset($_GET['q'])):
-    $q = '%'.$_GET['q'].'%';
-    $stmt = $pdo->prepare("SELECT * FROM peliculas WHERE titulo LIKE ? OR actor_principal LIKE ?");
-    $stmt->execute([$q,$q]);
-    $results = $stmt->fetchAll();
-    if($results): ?>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <?php foreach($results as $r): ?>
-        <div class="bg-gray-800 p-4 rounded-lg shadow-md">
-          <h3 class="text-xl font-semibold mb-2"><?= htmlspecialchars($r['titulo']) ?></h3>
-          <p class="text-gray-400 mb-2">Actor: <?= htmlspecialchars($r['actor_principal']) ?></p>
-          <?php if($r['imagen']): ?>
-            <img src="<?= $r['imagen'] ?>" alt="<?= htmlspecialchars($r['titulo']) ?>" class="w-full h-48 object-cover rounded mb-2">
-          <?php endif; ?>
-        </div>
-      <?php endforeach; ?>
-      </div>
-    <?php else: ?>
-      <p class="text-gray-300">No se encontraron resultados para "<?= htmlspecialchars($_GET['q']) ?>".</p>
-    <?php endif; ?>
-  <?php endif; ?>
-</main>
-<?php include 'includes/footer.php'; ?>
